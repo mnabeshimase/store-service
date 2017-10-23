@@ -1,0 +1,8 @@
+#AWS configuration
+config.json
+
+#MySQL config file
+mysql.config.js
+
+#MongoDB database
+mongodb/*
