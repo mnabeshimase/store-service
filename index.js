@@ -23,6 +23,7 @@ app.get('/:productId', (req, res) => {
   collection.insert({
     product_id: req.params.productId,
     user_id: req.query.user_id,
+    view_duration: req.body.view_duration,
   }, () => {
     res.end();
   });

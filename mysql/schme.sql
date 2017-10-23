@@ -20,7 +20,7 @@ CREATE TABLE users (
   city VARCHAR(64),
   state VARCHAR(64),
   gender VARCHAR(32),
-  marrital_status VARCHAR(16),
+  marital_status VARCHAR(16),
   children TINYINT unsigned,
   PRIMARY KEY (id)
 );
