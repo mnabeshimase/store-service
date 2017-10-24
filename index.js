@@ -71,16 +71,17 @@ app.post('/purchase', (req, res) => {
             res.end();
           }
         });
-      });
-      connection.query('INSERT INTO products_shopping_carts SET ?', {
-        product_id: req.body.user_id,
-        shopping_cart_id: results.insertId,
-      }, () => {
-        savedProductsShoppingCarts += 1;
-        if (savedProductsShoppingCarts === req.body.products.length &&
-        savedReviews === req.body.products.length) {
-          res.end();
-        }
+        connection.query('INSERT INTO products_shopping_carts SET ?', {
+          product_id: product.id,
+          quantity: product.quantity,
+          shopping_cart_id: results.insertId,
+        }, () => {
+          savedProductsShoppingCarts += 1;
+          if (savedProductsShoppingCarts === req.body.products.length &&
+          savedReviews === req.body.products.length) {
+            res.end();
+          }
+        });
       });
     });
   });
