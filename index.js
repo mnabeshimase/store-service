@@ -73,7 +73,7 @@ app.post('/purchase', (req, res) => {
         });
       });
       connection.query('INSERT INTO products_shopping_carts SET ?', {
-        user_id: req.body.user_id,
+        product_id: req.body.user_id,
         shopping_cart_id: results.insertId,
       }, () => {
         savedProductsShoppingCarts += 1;
