@@ -4,6 +4,7 @@ const { MongoClient } = require('mongodb');
 const mysql = require('mysql');
 const mysqlConfig = require('./mysql/mysql.config.js');
 const assert = require('assert');
+// const winston = require('winston');
 
 let db;
 MongoClient.connect('mongodb://localhost:27017/DL', (err, database) => {
@@ -15,10 +16,20 @@ MongoClient.connect('mongodb://localhost:27017/DL', (err, database) => {
 const connection = mysql.createConnection(mysqlConfig);
 connection.connect();
 
+// const logger = new (winston.Logger)({
+//   transports: [
+//     new winston.transports.File({
+//       json: true,
+//       filename: 'combined.log',
+//     }),
+//   ],
+// });
+
 const app = express();
 app.use(bodyParser.json());
 
 app.get('/:productId', (req, res) => {
+  // logger.log('info', req.body, { method: 'POST', action: `/${req.params.productId}?user_id=${req.query.user_id}` });
   const collection = db.collection('page_views');
   collection.insert({
     product_id: req.params.productId,
@@ -30,18 +41,21 @@ app.get('/:productId', (req, res) => {
 });
 
 app.post('/products', (req, res) => {
+  // logger.log('info', req.body, { method: 'POST', action: '/products' });
   connection.query('INSERT INTO products SET ?', req.body, () => {
     res.end();
   });
 });
 
 app.post('/signup', (req, res) => {
+  // logger.log('info', req.body, { method: 'POST', action: '/signup' });
   connection.query('INSERT INTO users SET ?', req.body, () => {
     res.end();
   });
 });
 
 app.post('/purchase', (req, res) => {
+  // logger.log('info', req.body, { method: 'POST', action: '/purchase' });
   // Save Shopping cart
   connection.query('INSERT INTO shopping_carts SET ?', {
     user_id: req.body.user_id,
@@ -88,6 +102,8 @@ app.post('/purchase', (req, res) => {
 });
 
 app.post('/mouseovers', (req, res) => {
+  console.log('here');
+  // logger.log('info', req.body, { method: 'POST', action: '/products' });
   const collection = db.collection('mouseovers');
   collection.insert({
     mouseovers: req.body,
