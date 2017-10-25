@@ -1,22 +1,35 @@
+const MONGODB_PORT = 27017;
 const express = require('express');
 const bodyParser = require('body-parser');
 const { MongoClient } = require('mongodb');
 const mysql = require('mysql');
 const mysqlConfig = require('./mysql/mysql.config.js');
 const assert = require('assert');
+const winston = require('winston');
+const Elasticsearch = require('winston-elasticsearch');
+
 
 let db;
-MongoClient.connect('mongodb://localhost:27017/DL', (err, database) => {
+MongoClient.connect(`mongodb://localhost:${MONGODB_PORT}/DL`, (err, database) => {
   assert.equal(null, err);
   db = database;
-  console.log('Connected successfully to server');
 });
 
 const connection = mysql.createConnection(mysqlConfig);
 connection.connect();
 
+const logger = new winston.Logger({
+  transports: [
+    new Elasticsearch({}),
+  ],
+});
+
 const app = express();
 app.use(bodyParser.json());
+app.use((req, res, next) => {
+  logger.log('info', req.body, req.headers);
+  next();
+});
 
 app.get('/:productId', (req, res) => {
   const collection = db.collection('page_views');

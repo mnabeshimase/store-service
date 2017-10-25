@@ -15,7 +15,9 @@
     "express": "^4.16.2",
     "mongodb": "^2.2.33",
     "mongoose": "^4.12.4",
-    "mysql": "^2.15.0"
+    "mysql": "^2.15.0",
+    "winston": "^2.4.0",
+    "winston-elasticsearch": "^0.5.3"
   },
   "devDependencies": {
     "eslint": "^4.9.0",

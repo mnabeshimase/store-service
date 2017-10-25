@@ -1,3 +1,6 @@
+#MacOSX
+.DS_Store
+
 #AWS configuration
 config.json
 
