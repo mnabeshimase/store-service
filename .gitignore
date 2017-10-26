@@ -1,6 +1,9 @@
 #MacOSX
 .DS_Store
 
+#Node modules
+node_modules
+
 #AWS configuration
 config.json
 
