@@ -73,6 +73,6 @@ CREATE TABLE reviews (
   review VARCHAR(4095),
   FOREIGN KEY (user_id) REFERENCES users (id),
   FOREIGN KEY (product_id) REFERENCES products (id),
-  FOREIGN KEY (purchase_id) REFERENCES products (id),
+  FOREIGN KEY (purchase_id) REFERENCES purchases (id),
   PRIMARY KEY (id)
 );

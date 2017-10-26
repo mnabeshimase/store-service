@@ -8,7 +8,6 @@ const mysqlConfig = require('./mysql/mysql.config.js');
 const winston = require('winston');
 const Elasticsearch = require('winston-elasticsearch');
 const messageHelpers = require('./messageHelpers.js');
-const AWS = require('aws-sdk');
 
 let connection;
 
@@ -27,9 +26,6 @@ const logger = new winston.Logger({
     new Elasticsearch({}),
   ],
 });
-
-AWS.config.loadFromPath('./config.json');
-const sqs = new AWS.SQS({ apiVersion: '2012-11-05' });
 
 const app = express();
 app.use(bodyParser.json());
@@ -66,6 +62,7 @@ app.post('/signup', (req, res) => {
 
 app.post('/purchase', (req, res) => {
   let shoppingCartId;
+  let purchaseId;
   // Save Shopping cart
   connection.query('INSERT INTO shopping_carts SET ?', {
     user_id: req.body.user_id,
@@ -80,12 +77,13 @@ app.post('/purchase', (req, res) => {
       });
     })
     .then((purchase) => {
+      purchaseId = purchase.insertId;
       const reviewsAndProductsShoppingCarts = [];
       req.body.products.forEach((product) => {
         reviewsAndProductsShoppingCarts.push(connection.query('INSERT INTO reviews SET ?', {
           user_id: req.body.user_id,
           product_id: product.id,
-          purchase_id: purchase.insertId,
+          purchase_id: purchaseId,
           title: product.review_title,
           review: product.review_body,
           rating: product.rating,
@@ -98,7 +96,10 @@ app.post('/purchase', (req, res) => {
       });
       return Promise.all(reviewsAndProductsShoppingCarts);
     })
-    .then(() => res.end());
+    .then(() => {
+      res.end();
+      messageHelpers.sendPurchaseToCollaborativeFiltering(connection, purchaseId);
+    });
 });
 
 app.post('/mouseovers', (req, res) => {
