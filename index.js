@@ -27,7 +27,7 @@ const logger = new winston.Logger({
 const app = express();
 app.use(bodyParser.json());
 app.use((req, res, next) => {
-  logger.log('info', req.body, req.headers);
+  logger.log('info', 'http request', { headers: req.headers, body: req.body });
   next();
 });
 
