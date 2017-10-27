@@ -7,6 +7,9 @@ node_modules
 #AWS configuration
 config.json
 
+#SQS configuration
+SQS.config.js
+
 #MySQL config file
 mysql.config.js
 

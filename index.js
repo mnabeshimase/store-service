@@ -55,8 +55,9 @@ app.post('/products', (req, res) => {
 
 app.post('/signup', (req, res) => {
   connection.query('INSERT INTO users SET ?', req.body)
-    .then(() => {
+    .then(({ insertId }) => {
       res.end();
+      messageHelpers.sendUserToContentBasedFiltering(connection, insertId);
     });
 });
 
