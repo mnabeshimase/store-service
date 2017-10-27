@@ -1,13 +1,15 @@
 const MONGODB_PORT = 27017;
+const assert = require('assert');
 const express = require('express');
 const bodyParser = require('body-parser');
 const { MongoClient } = require('mongodb');
-const mysql = require('mysql');
+const mysql = require('promise-mysql');
 const mysqlConfig = require('./mysql/mysql.config.js');
-const assert = require('assert');
 const winston = require('winston');
 const Elasticsearch = require('winston-elasticsearch');
+const messageHelpers = require('./messageHelpers.js');
 
+let connection;
 
 let db;
 MongoClient.connect(`mongodb://localhost:${MONGODB_PORT}/DL`, (err, database) => {
@@ -15,8 +17,9 @@ MongoClient.connect(`mongodb://localhost:${MONGODB_PORT}/DL`, (err, database) =>
   db = database;
 });
 
-const connection = mysql.createConnection(mysqlConfig);
-connection.connect();
+(async () => {
+  connection = await mysql.createConnection(mysqlConfig);
+})();
 
 const logger = new winston.Logger({
   transports: [
@@ -37,76 +40,77 @@ app.get('/:productId', (req, res) => {
     product_id: req.params.productId,
     user_id: req.query.user_id,
     view_duration: req.body.view_duration,
-  }, () => {
-    res.end();
-  });
+  })
+    .then(() => {
+      res.end();
+    });
 });
 
 app.post('/products', (req, res) => {
-  connection.query('INSERT INTO products SET ?', req.body, () => {
-    res.end();
-  });
+  connection.query('INSERT INTO products SET ?', req.body)
+    .then(() => {
+      res.end();
+    });
 });
 
 app.post('/signup', (req, res) => {
-  connection.query('INSERT INTO users SET ?', req.body, () => {
-    res.end();
-  });
+  connection.query('INSERT INTO users SET ?', req.body)
+    .then(({ insertId }) => {
+      res.end();
+      messageHelpers.sendUserToContentBasedFiltering(connection, insertId);
+    });
 });
 
 app.post('/purchase', (req, res) => {
+  let shoppingCartId;
+  let purchaseId;
   // Save Shopping cart
   connection.query('INSERT INTO shopping_carts SET ?', {
     user_id: req.body.user_id,
     subtotal: req.body.subtotal,
-  }, (err, results) => {
-    // Save Purchase
-    connection.query('INSERT INTO purchases SET ?', {
-      user_id: req.body.user_id,
-      shopping_cart_id: results.insertId,
-    }, () => {
-      // Save reviews
-      let savedReviews = 0;
-      // Save products and shopping_carts join table
-      let savedProductsShoppingCarts = 0;
-
+  })
+    .then((shoppingCart) => {
+      shoppingCartId = shoppingCart.insertId;
+      // Save Purchase
+      return connection.query('INSERT INTO purchases SET ?', {
+        user_id: req.body.user_id,
+        shopping_cart_id: shoppingCartId,
+      });
+    })
+    .then((purchase) => {
+      purchaseId = purchase.insertId;
+      const reviewsAndProductsShoppingCarts = [];
       req.body.products.forEach((product) => {
-        connection.query('INSERT INTO reviews SET ?', {
+        reviewsAndProductsShoppingCarts.push(connection.query('INSERT INTO reviews SET ?', {
           user_id: req.body.user_id,
           product_id: product.id,
+          purchase_id: purchaseId,
           title: product.review_title,
           review: product.review_body,
           rating: product.rating,
-        }, () => {
-          savedReviews += 1;
-          if (savedReviews === req.body.products.length &&
-          savedProductsShoppingCarts === req.body.products.length) {
-            res.end();
-          }
-        });
-        connection.query('INSERT INTO products_shopping_carts SET ?', {
+        }));
+        reviewsAndProductsShoppingCarts.push(connection.query('INSERT INTO products_shopping_carts SET ?', {
           product_id: product.id,
           quantity: product.quantity,
-          shopping_cart_id: results.insertId,
-        }, () => {
-          savedProductsShoppingCarts += 1;
-          if (savedProductsShoppingCarts === req.body.products.length &&
-          savedReviews === req.body.products.length) {
-            res.end();
-          }
-        });
+          shopping_cart_id: shoppingCartId,
+        }));
       });
+      return Promise.all(reviewsAndProductsShoppingCarts);
+    })
+    .then(() => {
+      res.end();
+      messageHelpers.sendPurchaseToCollaborativeFiltering(connection, purchaseId);
     });
-  });
 });
 
 app.post('/mouseovers', (req, res) => {
   const collection = db.collection('mouseovers');
   collection.insert({
     mouseovers: req.body,
-  }, () => {
-    res.end();
-  });
+  })
+    .then(() => {
+      res.end();
+    });
 });
 
 app.listen(3000); // Listening on port 3000

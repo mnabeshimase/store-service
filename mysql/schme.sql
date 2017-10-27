@@ -1,10 +1,10 @@
 /* Execute this file by using: mysql -u <USER> -p < schema.sql */
 USE dl;
 
+DROP TABLE IF EXISTS reviews;
 DROP TABLE IF EXISTS purchases;
 DROP TABLE IF EXISTS products_shopping_carts;
 DROP TABLE IF EXISTS shopping_carts;
-DROP TABLE IF EXISTS reviews;
 DROP TABLE IF EXISTS products;
 DROP TABLE IF EXISTS users;
 
@@ -36,19 +36,6 @@ CREATE TABLE products (
   PRIMARY KEY (id)
 );
 
-
-CREATE TABLE reviews (
-  id BIGINT unsigned NOT NULL AUTO_INCREMENT,
-  user_id BIGINT unsigned NOT NULL,
-  product_id BIGINT unsigned NOT NULL,
-  rating TINYINT unsigned,
-  title VARCHAR(255),
-  review VARCHAR(4095),
-  FOREIGN KEY (user_id) REFERENCES users (id),
-  FOREIGN KEY (product_id) REFERENCES products (id),
-  PRIMARY KEY (id)
-);
-
 CREATE TABLE shopping_carts (
   id BIGINT unsigned NOT NULL AUTO_INCREMENT,
   user_id BIGINT unsigned NOT NULL,
@@ -73,5 +60,19 @@ CREATE TABLE purchases (
   shopping_cart_id BIGINT unsigned NOT NULL,
   FOREIGN KEY (user_id) REFERENCES users (id),
   FOREIGN KEY (shopping_cart_id) REFERENCES shopping_carts (id),
+  PRIMARY KEY (id)
+);
+
+CREATE TABLE reviews (
+  id BIGINT unsigned NOT NULL AUTO_INCREMENT,
+  user_id BIGINT unsigned NOT NULL,
+  product_id BIGINT unsigned NOT NULL,
+  purchase_id BIGINT unsigned NOT NULL,
+  rating TINYINT unsigned,
+  title VARCHAR(255),
+  review VARCHAR(4095),
+  FOREIGN KEY (user_id) REFERENCES users (id),
+  FOREIGN KEY (product_id) REFERENCES products (id),
+  FOREIGN KEY (purchase_id) REFERENCES purchases (id),
   PRIMARY KEY (id)
 );
