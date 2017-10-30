@@ -21,7 +21,7 @@ module.exports.sendPurchaseToCollaborativeFiltering = (connection, purchaseId) =
         WHERE shopping_cart_id = ${shoppingCartId}
         )`);
     })
-    .then((items) => {
+    // .then((items) => {
       /* Uncomment below when using SQS */
       // const params = {
       //   MessageAttributes: {
@@ -43,7 +43,7 @@ module.exports.sendPurchaseToCollaborativeFiltering = (connection, purchaseId) =
       //     console.log('Success', data.MessageId);
       //   }
       // });
-    });
+    // });
 };
 
 module.exports.sendUserToContentBasedFiltering = (connection, userId) => (
@@ -51,7 +51,7 @@ module.exports.sendUserToContentBasedFiltering = (connection, userId) => (
     FROM users
     WHERE id = ${userId};
   `)
-    .then((user) => {
+    // .then((user) => {
       /* Uncomment below when using SQS */
       // const params = {
       //   MessageAttributes: {
@@ -70,5 +70,5 @@ module.exports.sendUserToContentBasedFiltering = (connection, userId) => (
       //     console.log('Success', data.MessageId);
       //   }
       // });
-    })
+    // })
 );

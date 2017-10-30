@@ -13,10 +13,13 @@
     "aws-sdk": "^2.138.0",
     "body-parser": "^1.18.2",
     "express": "^4.16.2",
+    "install": "^0.10.1",
     "mongodb": "^2.2.33",
     "mongoose": "^4.12.4",
     "mysql": "^2.15.0",
+    "npm": "^5.5.1",
     "promise-mysql": "^3.1.1",
+    "response-time": "^2.3.2",
     "winston": "^2.4.0",
     "winston-elasticsearch": "^0.5.3"
   },
