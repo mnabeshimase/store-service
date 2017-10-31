@@ -39,18 +39,21 @@ app.get('/:productId', (req, res, next) => {
     user_id: req.query.user_id,
     view_duration: req.body.view_duration,
   })
-    .then(() => {
+    .then((pageView) => {
       res.end();
-      next();
-    });
+      return messageHelpers
+        .sendPageViewToContentBasedFiltering(collection, pageView.insertedIds[0]);
+    })
+    .then(() => next());
 });
 
 app.post('/products', (req, res, next) => {
   connection.query('INSERT INTO products SET ?', req.body)
-    .then(() => {
+    .then((product) => {
       res.end();
-      next();
-    });
+      return messageHelpers.sendProductToContentBasedFiltering(connection, product.insertId);
+    })
+    .then(() => next());
 });
 
 app.post('/signup', (req, res, next) => {
@@ -102,6 +105,7 @@ app.post('/purchase', (req, res, next) => {
       res.end();
       return messageHelpers.sendPurchaseToCollaborativeFiltering(connection, purchaseId);
     })
+    .then(() => messageHelpers.sendPurchaseToContentBasedFiltering(connection, purchaseId))
     .then(() => next());
 });
 
@@ -110,10 +114,12 @@ app.post('/mouseovers', (req, res, next) => {
   collection.insert({
     mouseovers: req.body,
   })
-    .then(() => {
+    .then((mouseovers) => {
       res.end();
-      next();
-    });
+      return messageHelpers
+        .sendMouseoversToContentBasedFiltering(collection, mouseovers.insertedIds[0]);
+    })
+    .then(() => next());
 });
 
 app.use(({
