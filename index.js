@@ -1,25 +1,48 @@
-const MONGODB_PORT = 27017;
 const assert = require('assert');
 const express = require('express');
 const bodyParser = require('body-parser');
 const { MongoClient } = require('mongodb');
 const winston = require('winston');
 const Elasticsearch = require('winston-elasticsearch');
+const elasticsearch = require('elasticsearch');
 const messageHelpers = require('./messageHelpers.js');
 const responseTime = require('response-time');
 const mysqlQueryHelpers = require('./mysqlQueryHelpers.js');
 
+const MONGODB_PORT = 27017;
+const MONGODB_URL = process.env.MONGODB_URL || 'localhost';
+const ELASTICSEARCH_URL = process.env.ELASTICSEARCH_URL || 'localhost';
+
+
 let db;
-MongoClient.connect(`mongodb://localhost:${MONGODB_PORT}/DL`, (err, database) => {
+MongoClient.connect(`mongodb://${MONGODB_URL}:${MONGODB_PORT}/DL`, (err, database) => {
   assert.equal(null, err);
   db = database;
 });
 
-const logger = new winston.Logger({
-  transports: [
-    new Elasticsearch({}),
-  ],
+const elasticsearchCli = new elasticsearch.Client({
+  host: `${ELASTICSEARCH_URL}:9200`,
 });
+let logger;
+const connectElasticsearch = (elasticsearchServer) => {
+  elasticsearchServer.ping()
+    .then((results) => {
+      if (results) {
+        logger = new winston.Logger({
+          transports: [
+            new Elasticsearch({
+              client: elasticsearchCli,
+            }),
+          ],
+        });
+      }
+    })
+    .catch(() => {
+      connectElasticsearch(elasticsearchServer);
+    });
+};
+connectElasticsearch(elasticsearchCli);
+
 
 const app = express();
 app.use(bodyParser.json());
