@@ -8,6 +8,7 @@ const mysqlConfig = require('./mysql/mysql.config.js');
 const winston = require('winston');
 const Elasticsearch = require('winston-elasticsearch');
 const messageHelpers = require('./messageHelpers.js');
+const responseTime = require('response-time');
 
 let connection;
 
@@ -29,39 +30,42 @@ const logger = new winston.Logger({
 
 const app = express();
 app.use(bodyParser.json());
-app.use((req, res, next) => {
-  logger.log('info', 'http request', { headers: req.headers, body: req.body });
-  next();
-});
+app.use(responseTime());
 
-app.get('/:productId', (req, res) => {
+app.get('/:productId', (req, res, next) => {
   const collection = db.collection('page_views');
   collection.insert({
     product_id: req.params.productId,
     user_id: req.query.user_id,
     view_duration: req.body.view_duration,
   })
-    .then(() => {
+    .then((pageView) => {
       res.end();
-    });
+      return messageHelpers
+        .sendPageViewToContentBasedFiltering(collection, pageView.insertedIds[0]);
+    })
+    .then(() => next());
 });
 
-app.post('/products', (req, res) => {
+app.post('/products', (req, res, next) => {
   connection.query('INSERT INTO products SET ?', req.body)
-    .then(() => {
+    .then((product) => {
       res.end();
-    });
+      return messageHelpers.sendProductToContentBasedFiltering(connection, product.insertId);
+    })
+    .then(() => next());
 });
 
-app.post('/signup', (req, res) => {
+app.post('/signup', (req, res, next) => {
   connection.query('INSERT INTO users SET ?', req.body)
     .then(({ insertId }) => {
       res.end();
-      messageHelpers.sendUserToContentBasedFiltering(connection, insertId);
-    });
+      return messageHelpers.sendUserToContentBasedFiltering(connection, insertId);
+    })
+    .then(() => next());
 });
 
-app.post('/purchase', (req, res) => {
+app.post('/purchase', (req, res, next) => {
   let shoppingCartId;
   let purchaseId;
   // Save Shopping cart
@@ -99,18 +103,35 @@ app.post('/purchase', (req, res) => {
     })
     .then(() => {
       res.end();
-      messageHelpers.sendPurchaseToCollaborativeFiltering(connection, purchaseId);
-    });
+      return messageHelpers.sendPurchaseToCollaborativeFiltering(connection, purchaseId);
+    })
+    .then(() => messageHelpers.sendPurchaseToContentBasedFiltering(connection, purchaseId))
+    .then(() => next());
 });
 
-app.post('/mouseovers', (req, res) => {
+app.post('/mouseovers', (req, res, next) => {
   const collection = db.collection('mouseovers');
   collection.insert({
     mouseovers: req.body,
   })
-    .then(() => {
+    .then((mouseovers) => {
       res.end();
-    });
+      return messageHelpers
+        .sendMouseoversToContentBasedFiltering(collection, mouseovers.insertedIds[0]);
+    })
+    .then(() => next());
+});
+
+app.use(({
+  body, headers, method, url,
+}, res) => {
+  logger.log('info', 'http request', {
+    body,
+    headers,
+    method,
+    url,
+    responseTime: +(res.header()._headers['x-response-time'].slice(0, -2)),
+  });
 });
 
 app.listen(3000); // Listening on port 3000

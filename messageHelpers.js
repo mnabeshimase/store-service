@@ -4,6 +4,28 @@ const QueueUrls = require('./SQS.config.js');
 AWS.config.loadFromPath('./config.json');
 const sqs = new AWS.SQS({ apiVersion: '2012-11-05' });
 
+const sendSqs = (message, body, QueueUrl) => {
+  const params = {
+    MessageAttributes: {
+      messageType: {
+        DataType: 'String',
+        StringValue: message,
+      },
+    },
+    MessageBody: JSON.stringify(body),
+    QueueUrl,
+  };
+  return new Promise((resolve, reject) => {
+    sqs.sendMessage(params, (error, data) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(data.MessageId);
+      }
+    });
+  });
+};
+
 module.exports.sendPurchaseToCollaborativeFiltering = (connection, purchaseId) => {
   let userId;
   let shoppingCartId;
@@ -16,34 +38,21 @@ module.exports.sendPurchaseToCollaborativeFiltering = (connection, purchaseId) =
         WHERE products.id = reviews.product_id
         AND reviews.user_id  = ${userId}
         AND products.id IN (
-        SELECT products_shopping_carts.product_id
-        FROM products_shopping_carts
-        WHERE shopping_cart_id = ${shoppingCartId}
+          SELECT products_shopping_carts.product_id
+          FROM products_shopping_carts
+          WHERE shopping_cart_id = ${shoppingCartId}
         )`);
     })
-    .then((items) => {
-      /* Uncomment below when using SQS */
-      // const params = {
-      //   MessageAttributes: {
-      //     messageType: {
-      //       DataType: 'String',
-      //       StringValue: 'Purchase',
-      //     },
-      //   },
-      //   MessageBody: JSON.stringify({
-      //     user_id: userId,
-      //     shopping_cart: items,
-      //   }),
-      //   QueueUrl: QueueUrls.collaborativeFilteringServiceInputUrl,
-      // };
-      // sqs.sendMessage(params, (error, data) => {
-      //   if (error) {
-      //     console.log('Error', error);
-      //   } else {
-      //     console.log('Success', data.MessageId);
-      //   }
-      // });
-    });
+    .then(items => (
+      sendSqs(
+        'purchase',
+        {
+          user_id: userId,
+          shopping_cart: items,
+        },
+        QueueUrls.collaborativeFilteringServiceInputUrl,
+      )
+    ));
 };
 
 module.exports.sendUserToContentBasedFiltering = (connection, userId) => (
@@ -51,24 +60,66 @@ module.exports.sendUserToContentBasedFiltering = (connection, userId) => (
     FROM users
     WHERE id = ${userId};
   `)
-    .then((user) => {
-      /* Uncomment below when using SQS */
-      // const params = {
-      //   MessageAttributes: {
-      //     messageType: {
-      //       DataType: 'String',
-      //       StringValue: 'user_signup',
-      //     },
-      //   },
-      //   MessageBody: JSON.stringify(user),
-      //   QueueUrl: QueueUrls.contentBasedFilteringServiceInputUrl,
-      // };
-      // sqs.sendMessage(params, (error, data) => {
-      //   if (error) {
-      //     console.log('Error', error);
-      //   } else {
-      //     console.log('Success', data.MessageId);
-      //   }
-      // });
+    .then(user => (
+      sendSqs(
+        'user_signup',
+        user,
+        QueueUrls.contentBasedFilteringServiceInputUrl,
+      )
+    ))
+);
+
+module.exports.sendProductToContentBasedFiltering = (connection, productId) => (
+  connection.query(`SELECT * FROM products WHERE id = ${productId}`)
+    .then((product) => {
+      sendSqs(
+        'product_registration',
+        product,
+        QueueUrls.contentBasedFilteringServiceInputUrl,
+      );
     })
+);
+
+module.exports.sendPurchaseToContentBasedFiltering = (connection, purchaseId) => (
+  connection.query(`SELECT shopping_carts.user_id, products_shopping_carts.product_id
+  FROM shopping_carts INNER JOIN products_shopping_carts
+  WHERE products_shopping_carts. shopping_cart_id = shopping_carts.id
+  AND shopping_carts.id IN (
+    SELECT shopping_cart_id
+    FROM purchases
+    WHERE id = ${purchaseId}
+  )`)
+    .then((items) => {
+      const itemsSent = [];
+      for (let i = 0; i < items.length; i += 1) {
+        itemsSent.push(sendSqs(
+          'purchase',
+          items[i],
+          QueueUrls.contentBasedFilteringServiceInputUrl,
+        ));
+      }
+      return Promise.all(itemsSent);
+    })
+);
+
+module.exports.sendPageViewToContentBasedFiltering = (collection, pageViewId) => (
+  collection.findOne({ _id: pageViewId })
+    .then(pageView => (
+      sendSqs(
+        'page_view',
+        pageView,
+        QueueUrls.contentBasedFilteringServiceInputUrl,
+      )
+    ))
+);
+
+module.exports.sendMouseoversToContentBasedFiltering = (collection, mouseoversId) => (
+  collection.findOne({ _id: mouseoversId })
+    .then(mouseovers => (
+      sendSqs(
+        'page_view',
+        mouseovers,
+        QueueUrls.contentBasedFilteringServiceInputUrl,
+      )
+    ))
 );
