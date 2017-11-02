@@ -106,3 +106,21 @@ module.exports.sendMouseoversToContentBasedFiltering = (collection, mouseoversId
       )
     ))
 );
+
+module.exports.sendPurchaseToAnalytics = purchaseId => (
+  mysqlQueryHelpers.getRecommendationTypesForAnalytics(purchaseId)
+    .then((recommendationTypes) => {
+      const messagesSent = [];
+      for (let i = 0; i < recommendationTypes.length; i += 1) {
+        messagesSent.push(sendSqs(
+          'purchase',
+          {
+            userId: recommendationTypes[i].user_id,
+            recommendationType: recommendationTypes[i].recommendation_type,
+          },
+          QueueUrls.analyticsInputUrl,
+        ));
+      }
+      return Promise.all(messagesSent);
+    })
+);

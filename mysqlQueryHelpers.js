@@ -30,11 +30,13 @@ module.exports.insertReview = (userId, productId, purchaseId, title, review, rat
   })
 );
 
-module.exports.insertProductsShoppingCarts = (productId, quantity, shoppingCartId) => (
+module.exports.insertProductsShoppingCarts =
+(productId, quantity, shoppingCartId, recommendationType) => (
   connection.query('INSERT INTO products_shopping_carts SET ?', {
     product_id: productId,
     shopping_cart_id: shoppingCartId,
     quantity,
+    recommendation_type: recommendationType,
   })
 );
 
@@ -74,4 +76,12 @@ module.exports.sendPurchaseToCollaborativeFiltering = (userId, shoppingCartId) =
       FROM products_shopping_carts
       WHERE shopping_cart_id = ${shoppingCartId}
     )`)
+);
+
+module.exports.getRecommendationTypesForAnalytics = purchaseId => (
+  connection.query(`SELECT purchases.user_id, products_shopping_carts.recommendation_type
+  FROM purchases INNER JOIN shopping_carts INNER JOIN products_shopping_carts
+  WHERE purchases.id = ${purchaseId}
+  AND purchases.shopping_cart_id = shopping_carts.id
+  AND shopping_carts.id = products_shopping_carts.shopping_cart_id`)
 );
