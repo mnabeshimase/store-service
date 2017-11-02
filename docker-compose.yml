@@ -1,0 +1,22 @@
+version: '3.1'
+
+services:
+  store-service-server:
+    image: store-service
+    ports:
+      - '3000:3000'
+    depends_on:
+      - mysql-server
+      - mongo-server
+    environment:
+      MONGODB_URL: 'mongo-server'
+      ELASTICSEARCH_URL: 'elasticsearch-server'
+  mysql-server:
+    image: 'mysql'
+    environment:
+      MYSQL_ROOT_PASSWORD: 'testpassword'
+      MYSQL_DATABASE: 'dl'
+  mongo-server:
+    image: 'mongo'
+  elasticsearch-server:
+    image: 'elasticsearch'
