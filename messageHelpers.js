@@ -1,5 +1,6 @@
 const AWS = require('aws-sdk');
 const QueueUrls = require('./SQS.config.js');
+const mysqlQueryHelpers = require('./mysqlQueryHelpers');
 
 AWS.config.loadFromPath('./config.json');
 const sqs = new AWS.SQS({ apiVersion: '2012-11-05' });
@@ -26,22 +27,14 @@ const sendSqs = (message, body, QueueUrl) => {
   });
 };
 
-module.exports.sendPurchaseToCollaborativeFiltering = (connection, purchaseId) => {
+module.exports.sendPurchaseToCollaborativeFiltering = (purchaseId) => {
   let userId;
   let shoppingCartId;
-  return connection.query(`SELECT user_id, shopping_cart_id FROM purchases WHERE id = ${purchaseId}`)
+  return mysqlQueryHelpers.findPurchaseById(purchaseId)
     .then((purchase) => {
       userId = purchase[0].user_id;
       shoppingCartId = purchase[0].shopping_cart_id;
-      return connection.query(`SELECT products.id AS product_id, products.category, reviews.rating
-        FROM products INNER JOIN reviews
-        WHERE products.id = reviews.product_id
-        AND reviews.user_id  = ${userId}
-        AND products.id IN (
-          SELECT products_shopping_carts.product_id
-          FROM products_shopping_carts
-          WHERE shopping_cart_id = ${shoppingCartId}
-        )`);
+      return mysqlQueryHelpers.sendPurchaseToCollaborativeFiltering(userId, shoppingCartId);
     })
     .then(items => (
       sendSqs(
@@ -55,11 +48,8 @@ module.exports.sendPurchaseToCollaborativeFiltering = (connection, purchaseId) =
     ));
 };
 
-module.exports.sendUserToContentBasedFiltering = (connection, userId) => (
-  connection.query(`SELECT id AS user_id, age, street_address, zip_code, city, state, gender, marital_status, children
-    FROM users
-    WHERE id = ${userId};
-  `)
+module.exports.sendUserToContentBasedFiltering = userId => (
+  mysqlQueryHelpers.sendUserToContentBasedFiltering(userId)
     .then(user => (
       sendSqs(
         'user_signup',
@@ -69,8 +59,8 @@ module.exports.sendUserToContentBasedFiltering = (connection, userId) => (
     ))
 );
 
-module.exports.sendProductToContentBasedFiltering = (connection, productId) => (
-  connection.query(`SELECT * FROM products WHERE id = ${productId}`)
+module.exports.sendProductToContentBasedFiltering = productId => (
+  mysqlQueryHelpers.sendProductToContentBasedFiltering(productId)
     .then((product) => {
       sendSqs(
         'product_registration',
@@ -80,15 +70,8 @@ module.exports.sendProductToContentBasedFiltering = (connection, productId) => (
     })
 );
 
-module.exports.sendPurchaseToContentBasedFiltering = (connection, purchaseId) => (
-  connection.query(`SELECT shopping_carts.user_id, products_shopping_carts.product_id
-  FROM shopping_carts INNER JOIN products_shopping_carts
-  WHERE products_shopping_carts. shopping_cart_id = shopping_carts.id
-  AND shopping_carts.id IN (
-    SELECT shopping_cart_id
-    FROM purchases
-    WHERE id = ${purchaseId}
-  )`)
+module.exports.sendPurchaseToContentBasedFiltering = purchaseId => (
+  mysqlQueryHelpers.sendPurchaseToContentBasedFiltering(purchaseId)
     .then((items) => {
       const itemsSent = [];
       for (let i = 0; i < items.length; i += 1) {

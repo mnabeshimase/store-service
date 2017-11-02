@@ -3,24 +3,17 @@ const assert = require('assert');
 const express = require('express');
 const bodyParser = require('body-parser');
 const { MongoClient } = require('mongodb');
-const mysql = require('promise-mysql');
-const mysqlConfig = require('./mysql/mysql.config.js');
 const winston = require('winston');
 const Elasticsearch = require('winston-elasticsearch');
 const messageHelpers = require('./messageHelpers.js');
 const responseTime = require('response-time');
-
-let connection;
+const mysqlQueryHelpers = require('./mysqlQueryHelpers.js');
 
 let db;
 MongoClient.connect(`mongodb://localhost:${MONGODB_PORT}/DL`, (err, database) => {
   assert.equal(null, err);
   db = database;
 });
-
-(async () => {
-  connection = await mysql.createConnection(mysqlConfig);
-})();
 
 const logger = new winston.Logger({
   transports: [
@@ -48,19 +41,19 @@ app.get('/:productId', (req, res, next) => {
 });
 
 app.post('/products', (req, res, next) => {
-  connection.query('INSERT INTO products SET ?', req.body)
+  mysqlQueryHelpers.insertProduct(req.body)
     .then((product) => {
       res.end();
-      return messageHelpers.sendProductToContentBasedFiltering(connection, product.insertId);
+      return messageHelpers.sendProductToContentBasedFiltering(product.insertId);
     })
     .then(() => next());
 });
 
 app.post('/signup', (req, res, next) => {
-  connection.query('INSERT INTO users SET ?', req.body)
+  mysqlQueryHelpers.insertUser(req.body)
     .then(({ insertId }) => {
       res.end();
-      return messageHelpers.sendUserToContentBasedFiltering(connection, insertId);
+      return messageHelpers.sendUserToContentBasedFiltering(insertId);
     })
     .then(() => next());
 });
@@ -69,43 +62,37 @@ app.post('/purchase', (req, res, next) => {
   let shoppingCartId;
   let purchaseId;
   // Save Shopping cart
-  connection.query('INSERT INTO shopping_carts SET ?', {
-    user_id: req.body.user_id,
-    subtotal: req.body.subtotal,
-  })
+  mysqlQueryHelpers.insertShoppingCart(req.body.user_id, req.body.subtotal)
     .then((shoppingCart) => {
       shoppingCartId = shoppingCart.insertId;
       // Save Purchase
-      return connection.query('INSERT INTO purchases SET ?', {
-        user_id: req.body.user_id,
-        shopping_cart_id: shoppingCartId,
-      });
+      return mysqlQueryHelpers.insertPurchase(req.body.user_id, shoppingCartId);
     })
     .then((purchase) => {
       purchaseId = purchase.insertId;
       const reviewsAndProductsShoppingCarts = [];
       req.body.products.forEach((product) => {
-        reviewsAndProductsShoppingCarts.push(connection.query('INSERT INTO reviews SET ?', {
-          user_id: req.body.user_id,
-          product_id: product.id,
-          purchase_id: purchaseId,
-          title: product.review_title,
-          review: product.review_body,
-          rating: product.rating,
-        }));
-        reviewsAndProductsShoppingCarts.push(connection.query('INSERT INTO products_shopping_carts SET ?', {
-          product_id: product.id,
-          quantity: product.quantity,
-          shopping_cart_id: shoppingCartId,
-        }));
+        reviewsAndProductsShoppingCarts.push(mysqlQueryHelpers.insertReview(
+          req.body.user_id,
+          product.id,
+          purchaseId,
+          product.review_title,
+          product.review_body,
+          product.rating,
+        ));
+        reviewsAndProductsShoppingCarts.push(mysqlQueryHelpers.insertProductsShoppingCarts(
+          product.id,
+          product.quantity,
+          shoppingCartId,
+        ));
       });
       return Promise.all(reviewsAndProductsShoppingCarts);
     })
     .then(() => {
       res.end();
-      return messageHelpers.sendPurchaseToCollaborativeFiltering(connection, purchaseId);
+      return messageHelpers.sendPurchaseToCollaborativeFiltering(purchaseId);
     })
-    .then(() => messageHelpers.sendPurchaseToContentBasedFiltering(connection, purchaseId))
+    .then(() => messageHelpers.sendPurchaseToContentBasedFiltering(purchaseId))
     .then(() => next());
 });
 
