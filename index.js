@@ -107,6 +107,7 @@ app.post('/purchase', (req, res, next) => {
           product.id,
           product.quantity,
           shoppingCartId,
+          product.recommendation_type,
         ));
       });
       return Promise.all(reviewsAndProductsShoppingCarts);
@@ -116,6 +117,7 @@ app.post('/purchase', (req, res, next) => {
       return messageHelpers.sendPurchaseToCollaborativeFiltering(purchaseId);
     })
     .then(() => messageHelpers.sendPurchaseToContentBasedFiltering(purchaseId))
+    .then(() => messageHelpers.sendPurchaseToAnalytics(purchaseId))
     .then(() => next());
 });
 

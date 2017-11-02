@@ -49,6 +49,7 @@ CREATE TABLE products_shopping_carts (
   product_id BIGINT unsigned NOT NULL,
   shopping_cart_id BIGINT unsigned NOT NULL,
   quantity SMALLINT unsigned,
+  recommendation_type VARCHAR(63),
   FOREIGN KEY (product_id) REFERENCES products (id),
   FOREIGN KEY (shopping_cart_id) REFERENCES shopping_carts (id),
   PRIMARY KEY (id)
