@@ -1,11 +1,104 @@
 const assert = require('assert');
+const elasticsearch = require('elasticsearch');
 const { expect } = require('chai');
-const rp = require('request-promise');
 const { MongoClient } = require('mongodb');
 const mysql = require('promise-mysql');
 const mysqlConfig = require('../mysql/mysql.config.js');
+const rp = require('request-promise');
 
 const SERVICESTORE_PORT = 3000;
+
+describe('Elasticsearch', () => {
+  let elasticsearchCli;
+  before(() => {
+    elasticsearchCli = new elasticsearch.Client({
+      host: 'localhost:9200',
+    });
+  });
+
+  describe('index: logs-*', () => {
+    it('should add a document into the index for an http request', function insertionTest(done) {
+      this.timeout(4000);
+      let oldCount;
+      elasticsearchCli.count({
+        index: 'logs-*',
+      })
+        .then(({ count }) => {
+          oldCount = count;
+          return rp({
+            method: 'GET',
+            url: `http://localhost:${SERVICESTORE_PORT}/1?user_id=1`,
+            json: {
+              view_duration: 10,
+            },
+          });
+        })
+        .then(() => (
+          new Promise((resolve) => {
+            setTimeout(() => resolve(), 3000);
+          })
+        ))
+        .then(() => (
+          elasticsearchCli.count({
+            index: 'logs-*',
+          })
+        ))
+        .then(({ count }) => {
+          expect(count).to.equal(oldCount + 1);
+          done();
+        });
+    });
+
+    it('should log http method and url', function testHttpMethodAndUrl(done) {
+      this.timeout(4000);
+      rp({
+        method: 'GET',
+        url: `http://localhost:${SERVICESTORE_PORT}/1?user_id=1`,
+        json: {
+          view_duration: 10,
+        },
+      })
+        .then(() => (
+          new Promise((resolve) => {
+            setTimeout(() => resolve(), 3000);
+          })
+        ))
+        .then(() => (
+          elasticsearchCli.search({
+            index: 'logs-*',
+            size: 1,
+            sort: '@timestamp:desc',
+          })
+        ))
+        .then((results) => {
+          expect(results.hits.hits[0]._source.fields.method).to.equal('GET');
+          expect(results.hits.hits[0]._source.fields.url).to.equal('/1?user_id=1');
+          done();
+        });
+    });
+
+    it('should log response time', (done) => {
+      rp({
+        method: 'GET',
+        url: `http://localhost:${SERVICESTORE_PORT}/1?user_id=1`,
+        json: {
+          view_duration: 10,
+        },
+      })
+        .then(() => (
+          elasticsearchCli.search({
+            index: 'logs-*',
+            size: 1,
+            sort: '@timestamp:desc',
+          })
+        ))
+        .then((results) => {
+          expect(results.hits.hits[0]._source.fields.responseTime).to.be.a('number');
+          done();
+        });
+    });
+  });
+});
 
 describe('Store service api', () => {
   let db;
