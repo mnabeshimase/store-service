@@ -12,6 +12,4 @@ SQS.config.js
 
 #MySQL config file
 mysql.config.js
-
-#MongoDB database
-mongodb/*
+mysql.config_prod.js
