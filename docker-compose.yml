@@ -1,22 +1,54 @@
 version: '3.1'
-
 services:
-  store-service-server:
-    image: store-service
-    ports:
-      - '3000:3000'
+  store-service:
+    image: mnabeshimase/store-service:latest
     depends_on:
-      - mysql-server
-      - mongo-server
+      - store-service-elasticsearch
+      - store-service-mysql
+      - store-service-mongo
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
     environment:
-      MONGODB_URL: 'mongo-server'
-      ELASTICSEARCH_URL: 'elasticsearch-server'
-  mysql-server:
-    image: 'mysql'
+      NODE_ENV: 'production'
+      MONGODB_URL: 'store-service-mongo'
+      ELASTICSEARCH_URL: 'store-service-elasticsearch'
+    ports:
+      - '80:3000'
+  store-service-mysql:
+    image: 'mnabeshimase/store-service-mysql:latest'
+    deploy:
+      placement:
+        constraints: [node.role == manager]
+    logging:
+      driver: "json-file"
     environment:
       MYSQL_ROOT_PASSWORD: 'testpassword'
       MYSQL_DATABASE: 'dl'
-  mongo-server:
-    image: 'mongo'
-  elasticsearch-server:
-    image: 'elasticsearch'
+    ports:
+      - '3306:3306'
+  store-service-mongo:
+    image: 'mongo:3.5.13'
+    deploy:
+      placement:
+        constraints: [node.role == manager]
+    ports:
+      - '27017:27017'
+    volumes:
+      - store-service-mongodb-volume:/data/db
+  store-service-elasticsearch:
+    image: 'elasticsearch:5.6.3'
+    deploy:
+      placement:
+        constraints: [node.role == manager]
+    logging:
+      driver: "json-file"
+    ports:
+      - '9200:9200'
+    volumes:
+      - store-service-elasticsearch-volume:/usr/share/elasticsearch/data
+volumes:
+  store-service-mysql-volume:
+  store-service-mongodb-volume:
+  store-service-elasticsearch-volume:

@@ -1,11 +1,15 @@
 const mysql = require('promise-mysql');
-const mysqlConfig = require('./mysql/mysql.config.js');
+const mysqlConfig = process.env.NODE_ENV === 'production' ?
+  require('./mysql/mysql.config_prod.js') :
+  require('./mysql/mysql.config.js');
 
 let connection;
 
 (async () => {
   connection = await mysql.createConnection(mysqlConfig);
 })();
+
+module.exports.countUsers = () => (connection.query('SELECT COUNT(*) FROM users'));
 
 module.exports.insertProduct = set => (connection.query('INSERT INTO products SET ?', set));
 

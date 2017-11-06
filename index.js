@@ -38,7 +38,7 @@ const connectElasticsearch = (elasticsearchServer) => {
       }
     })
     .catch(() => {
-      connectElasticsearch(elasticsearchServer);
+      setTimeout(() => connectElasticsearch(elasticsearchServer), 500);
     });
 };
 connectElasticsearch(elasticsearchCli);
@@ -47,6 +47,14 @@ connectElasticsearch(elasticsearchCli);
 const app = express();
 app.use(bodyParser.json());
 app.use(responseTime());
+
+app.get('/test', (req, res, next) => {
+  mysqlQueryHelpers.countUsers()
+    .then((count) => {
+      res.send(count);
+      next();
+    });
+});
 
 app.get('/:productId', (req, res, next) => {
   const collection = db.collection('page_views');
