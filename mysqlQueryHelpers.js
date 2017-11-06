@@ -5,9 +5,11 @@ const mysqlConfig = process.env.NODE_ENV === 'production' ?
 
 let connection;
 
-(async () => {
-  connection = await mysql.createConnection(mysqlConfig);
-})();
+(function conenctMySQL() {
+  mysql.createConnection(mysqlConfig)
+    .then((conn) => { connection = conn; })
+    .catch(() => { setTimeout(conenctMySQL, 1000); });
+}());
 
 module.exports.countUsers = () => (connection.query('SELECT COUNT(*) FROM users'));
 
