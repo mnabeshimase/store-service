@@ -1,3 +1,2 @@
-FROM mysql:8.0.3
-EXPOSE 3306
+FROM mysql:5.7.20
 ADD mysql/schme.sql /docker-entrypoint-initdb.d
