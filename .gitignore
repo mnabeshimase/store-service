@@ -13,3 +13,6 @@ SQS.config.js
 #MySQL config file
 mysql.config.js
 mysql.config_prod.js
+
+#Docker secrets
+store-service-mysql-root.txt
