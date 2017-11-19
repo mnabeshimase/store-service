@@ -38,7 +38,10 @@ const connectElasticsearch = (elasticsearchServer) => {
       }
     })
     .catch(() => {
-      setTimeout(() => connectElasticsearch(elasticsearchServer), 500);
+      setTimeout(() => {
+        console.log('Connecting to Elasticsearch server');
+        connectElasticsearch(elasticsearchServer);
+      }, 500);
     });
 };
 connectElasticsearch(elasticsearchCli);

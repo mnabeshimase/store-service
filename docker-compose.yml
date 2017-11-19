@@ -26,10 +26,12 @@ services:
     logging:
       driver: "json-file"
     environment:
-      MYSQL_ROOT_PASSWORD: 'testpassword'
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/store-service-mysql-root
       MYSQL_DATABASE: 'dl'
     ports:
       - '3306:3306'
+    secrets:
+      - store-service-mysql-root
     volumes:
       - store-service-mysql-volume:/var/lib/mysql
   store-service-mongo:
@@ -52,6 +54,9 @@ services:
       - '9200:9200'
     volumes:
       - store-service-elasticsearch-volume:/usr/share/elasticsearch/data
+secrets:
+  store-service-mysql-root:
+    file: ./store-service-mysql-root.txt
 volumes:
   store-service-mysql-volume:
   store-service-mongodb-volume:

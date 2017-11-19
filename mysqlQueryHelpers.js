@@ -8,7 +8,10 @@ let connection;
 (function conenctMySQL() {
   mysql.createConnection(mysqlConfig)
     .then((conn) => { connection = conn; })
-    .catch(() => { setTimeout(conenctMySQL, 1000); });
+    .catch(() => {
+      console.log('Connecting to MySQL server');
+      setTimeout(conenctMySQL, 1000);
+    });
 }());
 
 module.exports.countUsers = () => (connection.query('SELECT COUNT(*) FROM users'));
