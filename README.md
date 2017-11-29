@@ -4,12 +4,12 @@ RecommendationNation is a recommender system for online store services. This rep
 
 # Table of Contents
 
-1. [Usage](#Usage)
+1. [Usage](#usage)
 1. [Requirements](#requirements)
 1. [Development](#development)
     1. [Installing Dependencies](#installing-dependencies)
     1. [Tasks](#tasks)
-1. [Other Information](#other Information)
+1. [Other Information](#other-information)
 
 ## Usage
 Docker images for the web server and MySQL server can be built from Dockerfile and Dockerfile-mysql respectively. MySQL server requires store-service-mysql-root.txt file to store the password; this file is added to docker secret. To run the service on production environment, run `docker stack deploy -c docker-compose.yml store-service`. To perform tests using Mocha, run  `npm test`.
