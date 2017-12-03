@@ -15,10 +15,11 @@ const ELASTICSEARCH_URL = process.env.ELASTICSEARCH_URL || 'localhost';
 
 
 let db;
-MongoClient.connect(`mongodb://${MONGODB_URL}:${MONGODB_PORT}/DL`, (err, database) => {
-  assert.equal(null, err);
-  db = database;
-});
+(function connectMongoDB() {
+  MongoClient.connect(`mongodb://${MONGODB_URL}:${MONGODB_PORT}/DL`, (err, database) => {
+    err ? connectMongoDB() : db = database;
+  });
+}());
 
 const elasticsearchCli = new elasticsearch.Client({
   host: `${ELASTICSEARCH_URL}:9200`,
@@ -45,7 +46,6 @@ const connectElasticsearch = (elasticsearchServer) => {
     });
 };
 connectElasticsearch(elasticsearchCli);
-
 
 const app = express();
 app.use(bodyParser.json());
@@ -76,20 +76,20 @@ app.get('/:productId', (req, res, next) => {
 
 app.post('/products', (req, res, next) => {
   mysqlQueryHelpers.insertProduct(req.body)
-    .then((product) => {
+    .then(product => (messageHelpers.sendProductToContentBasedFiltering(product.insertId)))
+    .then(() => {
       res.end();
-      return messageHelpers.sendProductToContentBasedFiltering(product.insertId);
-    })
-    .then(() => next());
+      next();
+    });
 });
 
 app.post('/signup', (req, res, next) => {
   mysqlQueryHelpers.insertUser(req.body)
-    .then(({ insertId }) => {
+    .then(({ insertId }) => (messageHelpers.sendUserToContentBasedFiltering(insertId)))
+    .then(() => {
       res.end();
-      return messageHelpers.sendUserToContentBasedFiltering(insertId);
-    })
-    .then(() => next());
+      next();
+    });
 });
 
 app.post('/purchase', (req, res, next) => {
@@ -134,14 +134,12 @@ app.post('/purchase', (req, res, next) => {
 
 app.post('/mouseovers', (req, res, next) => {
   const collection = db.collection('mouseovers');
+  res.end();
   collection.insert({
     mouseovers: req.body,
   })
-    .then((mouseovers) => {
-      res.end();
-      return messageHelpers
-        .sendMouseoversToContentBasedFiltering(collection, mouseovers.insertedIds[0]);
-    })
+    .then(mouseovers =>
+      (messageHelpers.sendMouseoversToContentBasedFiltering(collection, mouseovers.insertedIds[0])))
     .then(() => next());
 });
 
