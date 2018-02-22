@@ -14,18 +14,20 @@ let connection;
     });
 }());
 
-module.exports.countUsers = () => (connection.query('SELECT COUNT(*) FROM users'));
+module.exports.countUsers = () => (connection.query('SELECT COUNT(*) FROM users').catch(() => countUsers()));
 
-module.exports.insertProduct = set => (connection.query('INSERT INTO products SET ?', set));
+module.exports.insertProduct = set => (connection.query('INSERT INTO products SET ?', set).catch(() => insertProduct(set)));
 
-module.exports.insertUser = set => (connection.query('INSERT INTO users SET ?', set));
+module.exports.insertUser = set => (connection.query('INSERT INTO users SET ?', set).catch(() => insertUser(set)));
 
 module.exports.insertShoppingCart = (userId, subtotal) => (
   connection.query('INSERT INTO shopping_carts SET ?', { user_id: userId, subtotal })
+    .catch(() => insertShoppingCart(userId, subtotal))
 );
 
 module.exports.insertPurchase = (userId, shoppingCartId) => (
   connection.query('INSERT INTO purchases SET ?', { user_id: userId, shopping_cart_id: shoppingCartId })
+    .catch(() => insertPurchase(userId, shoppingCartId))
 );
 
 module.exports.insertReview = (userId, productId, purchaseId, title, review, rating) => (
@@ -37,6 +39,7 @@ module.exports.insertReview = (userId, productId, purchaseId, title, review, rat
     review,
     rating,
   })
+    .catch(() => insertReview(userId, productId, purchasId, title, review, rating))
 );
 
 module.exports.insertProductsShoppingCarts =
@@ -46,7 +49,7 @@ module.exports.insertProductsShoppingCarts =
     shopping_cart_id: shoppingCartId,
     quantity,
     recommendation_type: recommendationType,
-  })
+  }).catch(() => insertProductsShoppingCarts(productId, quantity, shoppingCartId, recommendationType))
 );
 
 module.exports.sendPurchaseToContentBasedFiltering = purchaseId => (
@@ -57,7 +60,7 @@ module.exports.sendPurchaseToContentBasedFiltering = purchaseId => (
     SELECT shopping_cart_id
     FROM purchases
     WHERE id = ${purchaseId}
-  )`)
+  )`).catch(() => ())
 );
 
 module.exports.sendProductToContentBasedFiltering = productId => (
